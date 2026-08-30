@@ -1,92 +1,202 @@
-\# Battery Dispatch Forecast Value
+# Battery Dispatch Forecast Value
 
+## When Better Forecasts Make Better Decisions
 
+**Status: Work in Progress — empirical Belgian market analysis not yet complete.**
 
-\## When Better Forecasts Make Better Decisions
-
-
-
-This project studies the economic value of load forecasting in constrained
-
-battery dispatch.
-
-
+This project studies the **economic value of load forecasting in constrained battery dispatch**.
 
 The central question is:
 
+> **Does improved statistical forecast accuracy translate into improved economic battery dispatch, and under what price and state-of-charge conditions does the ranking of forecasts change?**
 
+A deliberately provocative version is:
 
-> Does improved statistical forecast accuracy translate into improved
+> **Does a 13.6% MAE gap imply a 13.6% economic-value gap?**
 
-> economic battery dispatch, and under what price and state-of-charge
+The project follows the chain:
 
-> conditions does the ranking of forecasts change?
+**forecast → uncertainty → dispatch decision → realized economic consequence**
 
+## Research objective
 
+The purpose is not to build yet another load-forecasting benchmark.
 
-The research chain is:
+The objective is to determine when forecast quality actually changes an operational battery decision, and whether a statistically better forecast produces materially better realized economic performance.
 
+The study therefore separates four questions:
 
+1. How different are the forecasts statistically?
+2. Do those forecast differences change the battery dispatch?
+3. What is the realized economic consequence?
+4. Which forecast errors and operational constraints explain the difference?
 
-\*\*forecast → uncertainty → dispatch decision → realized economic consequence\*\*
+## Core methodological point
 
+Under symmetric, unconstrained linear electricity settlement, the load forecast can become irrelevant to optimal battery dispatch.
 
+If grid exchange is unrestricted and imports and exports are settled at the same linear price, forecast load contributes only an additive constant to the dispatch objective.
 
-The project combines:
+In that case:
 
+> **forecast error exists, but forecast decision value is zero.**
 
+Forecast value emerges only when additional economic or physical structure is introduced, such as:
 
-\- a tested battery-dispatch optimization model;
+- asymmetric import/export prices;
+- grid import or export constraints;
+- load-dependent constraints;
+- nonlinear tariffs;
+- demand charges.
 
-\- explicit temporal and information-integrity constraints;
+This provides an explicit negative control for the empirical study.
 
-\- negative and positive controls for forecast decision value;
+## Battery dispatch model
 
-\- independent validation of optimization results;
+The current model is a deterministic linear program with:
 
-\- empirical Belgian day-ahead electricity prices;
+- charging and discharging power limits;
+- battery energy-capacity limits;
+- charging and discharging efficiency;
+- fixed initial state of charge;
+- fixed terminal state of charge;
+- quarter-hour physical resolution;
+- separate grid import and export variables;
+- asymmetric import/export settlement.
 
-\- frozen out-of-sample load forecasts;
+The optimizer uses a three-stage lexicographic solution procedure:
 
-\- realized economic evaluation and regret attribution.
+1. minimize economic settlement cost;
+2. among economically equivalent solutions, minimize battery throughput;
+3. among remaining equivalent solutions, apply deterministic temporal tie-breaking.
 
+This avoids allowing arbitrary solver degeneracy to masquerade as forecast dependence.
 
+## Temporal integrity
 
-A key methodological point is established analytically and numerically:
+The experiment uses a strict information boundary.
 
-under unconstrained symmetric linear settlement, load forecasts do not affect
+The dispatch decision origin is:
 
-optimal battery dispatch. Forecast decision value arises only when features
+**18:00 Europe/Brussels on D-1**
 
-such as import/export price asymmetry, grid constraints, or nonlinear tariffs
+Only information available at that origin may influence the battery schedule.
 
-make the dispatch problem load-dependent.
+Day-ahead Belgian electricity prices are considered known at that point.
 
+Realized future load is used only for ex-post economic evaluation.
 
+The core rule is:
 
-The current implementation also explicitly tests the behaviour of the
+> **Forecast information determines dispatch. Realized outcomes determine ex-post economic value.**
 
-continuous LP under negative electricity prices, where simultaneous charging
+## Belgian day-ahead prices
 
-and discharging can become economically optimal through deliberate
+The physical model always operates on a quarter-hour grid.
 
-round-trip energy losses.
+For Belgian SDAC prices:
 
+- before **1 October 2025**, hourly day-ahead prices are repeated over the four corresponding quarter-hours;
+- from **1 October 2025**, native 15-minute SDAC prices are used.
 
+Civil-day structure is preserved, including DST days with:
 
-\## Status
+- 92 quarter-hours;
+- 96 quarter-hours;
+- 100 quarter-hours.
 
+ENTSO-E Transparency Platform data will be the primary price source.
 
+## Negative prices and LP cycling
 
-Core deterministic battery LP implemented and validated.
+The project explicitly tests a known continuous-LP pathology.
 
+With sufficiently negative electricity prices, simultaneous charging and discharging can become economically attractive because battery losses increase grid consumption while preserving the terminal state of charge.
 
+For the current battery:
 
-Current automated test suite: \*\*11 tests passing\*\*.
+- charge efficiency: 0.95;
+- discharge efficiency: 0.95;
+- round-trip efficiency: 0.9025;
+- cycle loss fraction: 0.0975.
 
+A constructed negative-price stress test reproduces this behaviour.
 
+The empirical Belgian price data will determine whether this pathology is material enough to require a mutually exclusive charge/discharge formulation, most likely a MILP.
 
-Belgian day-ahead price acquisition and the empirical forecast-value
+## Forecast inputs
 
-experiment are the next stage.
+The project is designed to reuse previously frozen Belgian day-ahead load forecasts without retuning them for battery outcomes.
 
+This is important because the economic analysis must not contaminate the earlier forecast comparison.
+
+The stylised site preserves the temporal structure and relative forecast errors of Belgian system load under linear scaling.
+
+It is **not** intended to represent a statistically typical commercial or industrial site.
+
+## Economic evaluation
+
+The primary economic comparison will evaluate alternative forecast-driven dispatch schedules against realized load.
+
+Planned measures include:
+
+- realized energy cost;
+- forecast-induced economic regret;
+- perfect-foresight benchmark;
+- dispatch differences;
+- state-of-charge differences;
+- constraint activation;
+- attribution of economic loss to specific forecast errors.
+
+A central attribution tool will be the LP dual variables.
+
+Locally, the economic impact of forecast error can be related to a dual-weighted error:
+
+\[
+\Delta V \approx \sum_t \lambda_t e_t
+\]
+
+where:
+
+- \(e_t = L_t - \hat L_t\) is the load forecast error;
+- \(\lambda_t\) is the marginal value associated with the power-balance constraint.
+
+This gives a route from:
+
+**forecast error → economically weighted error → decision change → realized regret**
+
+## Validation philosophy
+
+The project is designed around falsification rather than around obtaining a positive result.
+
+Current validation includes:
+
+- power-balance reconstruction;
+- state-of-charge recursion checks;
+- terminal-state verification;
+- objective reconstruction;
+- charge/discharge power bounds;
+- symmetric-price forecast-irrelevance negative control;
+- asymmetric-price positive control;
+- deterministic tie-breaking;
+- explicit negative-price cycling stress test.
+
+Current status:
+
+**11 automated tests passing.**
+
+## Project structure
+
+```text
+BatteryDispatchForecastValue/
+├── README.md
+├── pyproject.toml
+├── src/
+│   └── battery_dispatch_forecast_value/
+│       ├── __init__.py
+│       └── dispatch.py
+├── tests/
+│   └── test_dispatch.py
+├── notebooks/
+│   └── battery_dispatch.ipynb
+└── docs/
