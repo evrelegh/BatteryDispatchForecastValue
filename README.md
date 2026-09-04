@@ -3,7 +3,7 @@
 *The Economic Value of Forecast Accuracy in Constrained Battery Dispatch*
 
 <p align="center">
-  <img src="docs/figures/readmepic.png" alt="Better Forecasts, Same Decisions — battery dispatch and load forecasting" width="100%">
+  <img src="figures/readmepic.png" alt="Better Forecasts, Same Decisions — battery dispatch and load forecasting" width="100%">
 </p>
 
 **Status: V1 empirical analysis complete and frozen.** Experiments A and B, the settlement-wedge sensitivity and the dependence-aware inference layer are final; no configuration, regime, policy or experiment is added after the closing checkpoint in the notebook.
