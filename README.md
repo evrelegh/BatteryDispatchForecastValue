@@ -1,202 +1,108 @@
-# Battery Dispatch Forecast Value
+# Better Forecasts, Same Decisions
 
-## When Better Forecasts Make Better Decisions
+*The Economic Value of Forecast Accuracy in Constrained Battery Dispatch*
 
-**Status: Work in Progress — empirical Belgian market analysis not yet complete.**
+<p align="center">
+  <img src="docs/figures/readmepic.png" alt="Better Forecasts, Same Decisions — battery dispatch and load forecasting" width="100%">
+</p>
 
-This project studies the **economic value of load forecasting in constrained battery dispatch**.
+**Status: V1 empirical analysis complete and frozen.** Experiments A and B, the settlement-wedge sensitivity and the dependence-aware inference layer are final; no configuration, regime, policy or experiment is added after the closing checkpoint in the notebook.
 
-The central question is:
+This project measures the **economic value of load-forecast accuracy in constrained battery dispatch**, on Belgian data, end to end:
 
-> **Does improved statistical forecast accuracy translate into improved economic battery dispatch, and under what price and state-of-charge conditions does the ranking of forecasts change?**
+**forecast → dispatch decision → realized economic consequence.**
 
-A deliberately provocative version is:
+The research question:
 
-> **Does a 13.6% MAE gap imply a 13.6% economic-value gap?**
+> **Does improved statistical forecast accuracy translate into improved economic battery dispatch — and how does that relationship depend on battery flexibility and settlement design?**
 
-The project follows the chain:
+The provocative version: does a materially better statistical forecast necessarily produce a proportionally better economic decision?
 
-**forecast → uncertainty → dispatch decision → realized economic consequence**
+The answer, measured: **no — and under verifiable structural conditions the economic value of the accuracy gap is exactly zero.**
 
-## Research objective
+## Headline results
 
-The purpose is not to build yet another load-forecasting benchmark.
+The study compares four day-ahead load-forecast policies — weekly persistence, persistence with a recent-level correction, a frozen Fourier/calendar model with the identical correction, and Elia's operational forecast — plus perfect foresight as an ex-post bound, driving a daily battery-dispatch optimisation against known Belgian day-ahead prices over **333 civil days of 2025** (February–December; January was burned in the upstream forecasting study). On the common support used by the economic experiment, Elia's MAE is about 12% lower than the frozen Fourier/calendar model's MAE.
 
-The objective is to determine when forecast quality actually changes an operational battery decision, and whether a statistically better forecast produces materially better realized economic performance.
+**1. A structural zero, predicted before the data and confirmed exactly.** For the 50 kW / 100 kWh configuration, maximum discharge power lies below the site's minimum load, so the site can never export and the settlement asymmetry is unreachable. Proposition 2 predicts that forecast differences then have *exactly zero* economic value. Empirically, all four policies produce the same realized cost on all 333 days, under all three settlement regimes, in both experiments — maximum daily spread 7×10⁻¹³ €. Forecast error exists; forecast decision value is zero.
 
-The study therefore separates four questions:
+**2. Forecast value emerges with flexibility, and is measured with dependence-aware uncertainty.** Scaling the battery at a fixed 0.5C ratio (Experiment B, ±50 EUR/MWh wedge), the cumulative economic advantage of Elia's forecast over the frozen model per 333 days is:
 
-1. How different are the forecasts statistically?
-2. Do those forecast differences change the battery dispatch?
-3. What is the realized economic consequence?
-4. Which forecast errors and operational constraints explain the difference?
+| Configuration | Observed | 95% block-bootstrap interval |
+|---|---:|---|
+| 50 kW / 100 kWh | €0.00 | structural zero |
+| 75 kW / 150 kWh | €1.17 | [€0.01, €2.48] |
+| 100 kW / 200 kWh | €29.91 | [€12.46, €47.97] |
+| 150 kW / 300 kWh | €38.50 | [€0.59, €75.23] |
 
-## Core methodological point
+The established core is the 100 kW class, whose intervals exclude zero at all three settlement wedges (±25, ±50, ±100 EUR/MWh). Given the exploratory 21-interval A/B settlement grid, isolated marginal exclusions for the 75 and 150 kW classes are interpreted cautiously.
 
-Under symmetric, unconstrained linear electricity settlement, the load forecast can become irrelevant to optimal battery dispatch.
+**3. Statistical improvement is strongly attenuated economically.** On the common support used by the economic experiment, Elia's roughly 12% MAE advantage over the frozen Fourier/calendar model is worth €0–45 per 333 days depending on configuration and settlement — against a no-battery energy bill of roughly €97,500 and perfect-foresight battery value of €3,485 (100 kWh) to €9,558 (300 kWh). Every forecast policy captures at least 95.8% of perfect-foresight value in every configuration. The inter-forecast economic stake is therefore small relative to the underlying energy bill and total battery value capture **under this settlement abstraction**, which deliberately excludes capacity charges, peak-shaving remuneration, imbalance exposure, degradation costs and investment economics.
 
-If grid exchange is unrestricted and imports and exports are settled at the same linear price, forecast load contributes only an additive constant to the dispatch objective.
+**4. Two seductive findings were submitted to the study's own inference layer; one died.** An apparent high-wedge reversal (the 150 kW battery earning *less* from the better forecast than the 100 kW battery) has a bootstrap interval of [−€56, +€47] and is reported as not established. The energy-scaling interaction that motivated Experiment B is established at the ±25 wedge ([€4.67, €17.90]) and unresolved at larger wedges.
 
-In that case:
+The general conclusion: **forecast accuracy has no asset-independent economic value.** Its realized value is generated jointly by the error, the feasible dispatch set, and the settlement mechanism — and it can be provably zero while the statistical accuracy gap is large.
 
-> **forecast error exists, but forecast decision value is zero.**
+## Why forecast value can be exactly zero
 
-Forecast value emerges only when additional economic or physical structure is introduced, such as:
+Under symmetric linear settlement with sign-unconstrained grid exchange, forecast load contributes only an additive constant to the dispatch objective (Proposition 1): the optimal battery schedule is forecast-independent. Value can only be created by asymmetries or load-dependent structure — and Proposition 2 sharpens this: an import/export price wedge creates value **only if the battery can actually reach the export side**. If maximum discharge power lies below minimum load, the wedge is decoration and irrelevance persists. The 50 kW configuration was retained in both experiments as this analytically predicted negative control.
 
-- asymmetric import/export prices;
-- grid import or export constraints;
-- load-dependent constraints;
-- nonlinear tariffs;
-- demand charges.
+## Decision model
 
-This provides an explicit negative control for the empirical study.
+A daily three-stage lexicographic optimisation per forecast policy: (1) minimise settlement cost — a linear program with charge/discharge limits, energy capacity, 0.95/0.95 efficiencies, and terminal state of charge equal to initial (days decouple; the civil day is the inferential unit); (2) among economically equivalent schedules, minimise battery throughput; (3) among the remainder, minimise the time-weighted total action Σₜ t·Δt·(cₜ+dₜ), favoring earlier action as a deterministic tie-breaker. Stages 2–3 exist so that solver degeneracy — guaranteed while day-ahead prices are hourly — cannot masquerade as forecast dependence.
 
-## Battery dispatch model
+Belgian negative prices make simultaneous charge/discharge (deliberate efficiency loss) optimal in the relaxed LP on 13 days of the sample. Those day×configuration cases are re-solved with a mutually exclusive MILP formulation, **uniformly for all five policies including perfect foresight**, preserving identical feasible sets and the regret identity R ≥ 0. All MILP stages run at zero relative gap after the R ≥ 0 invariant caught a €0.011 violation caused by the solver's default tolerance — an incident retained in the notebook as evidence the invariants work.
 
-The current model is a deterministic linear program with:
-
-- charging and discharging power limits;
-- battery energy-capacity limits;
-- charging and discharging efficiency;
-- fixed initial state of charge;
-- fixed terminal state of charge;
-- quarter-hour physical resolution;
-- separate grid import and export variables;
-- asymmetric import/export settlement.
-
-The optimizer uses a three-stage lexicographic solution procedure:
-
-1. minimize economic settlement cost;
-2. among economically equivalent solutions, minimize battery throughput;
-3. among remaining equivalent solutions, apply deterministic temporal tie-breaking.
-
-This avoids allowing arbitrary solver degeneracy to masquerade as forecast dependence.
+Execution is open-loop: the planned battery schedule is followed exactly; realized load determines metered import/export and realized cost. One rule, identical across policies, so cost differences are attributable to forecasts alone.
 
 ## Temporal integrity
 
-The experiment uses a strict information boundary.
+Dispatch decisions for day D use only information available at **18:00 Europe/Brussels on D−1**: the day-ahead prices for D (published earlier that afternoon) and the frozen load forecasts. Realized load enters only the ex-post evaluation. Positive and negative controls test the boundary in both directions: shifting pre-origin inputs must move the plan by the predicted amount; perturbing post-origin data must not move it at all.
 
-The dispatch decision origin is:
+## Data and provenance
 
-**18:00 Europe/Brussels on D-1**
+**Prices:** ENTSO-E Transparency File Library, extract `EnergyPrices_12.1.D_r3.1`, twelve monthly files plus the December 2024 edge, SHA-256 manifest and acquisition timestamps recorded. The hourly→15-minute SDAC transition was **detected empirically from the data**: the first Belgian delivery day at native 15-minute resolution is 2025-09-30, one day earlier than the initially assumed 2025-10-01; the correction is documented in the notebook. Hourly prices before the transition are repeated over their four quarter-hours on the UTC axis; DST days (92/96/100 quarter-hours) are preserved throughout. 2025 prices span −462.33 to +517.57 EUR/MWh with 2,081 negative intervals.
 
-Only information available at that origin may influence the battery schedule.
+**Load and forecasts:** the frozen forecasts from the companion study [ElectricityLoadForecasting](https://github.com/evrelegh/ElectricityLoadForecasting) are reused without retuning, reconstructed from newly acquired Elia ODS001 data and verified to reproduce the frozen confirmation MAEs exactly. The site is a linear scaling of Belgian system load to a ~93 kW-mean stylised site, frozen on pre-confirmation data only. Linear scaling preserves temporal structure and relative forecast errors. The stylised site is not intended as a statistically representative commercial or industrial site; that limitation is stated explicitly wherever the empirical results are interpreted.
 
-Day-ahead Belgian electricity prices are considered known at that point.
+**Settlement:** symmetric wedges of ±25, ±50 (primary, frozen before empirical dispatch) and ±100 EUR/MWh around the day-ahead price — a controlled settlement-design axis, not a claim about any commercial tariff.
 
-Realized future load is used only for ex-post economic evaluation.
+## Inference
 
-The core rule is:
+All headline comparisons are paired daily cost differences under a 7-day circular moving-block bootstrap, 10,000 replications, recorded seed, 95% percentile intervals — with **common resampled day indices across configurations, wedges and experiments**, so that physical-design contrasts are inferred on paired days. Exact economic zeros are classified as structural, not sampling, results. Totals are per 333 observed days, not annualised; the sample excludes January, and no claim is made about the direction of that effect.
 
-> **Forecast information determines dispatch. Realized outcomes determine ex-post economic value.**
+## Validation
 
-## Belgian day-ahead prices
+Zero-capacity and constant-price controls (the latter must and does return the all-zero schedule through all three lexicographic stages); power-balance, SoC-recursion, terminal-state and objective reconstruction on every solved day; the value-capture identity V_F = V_PF − R_F verified to 10⁻¹⁴; the physically identical 50 kW configuration reproduced bit-exactly across both experiments and all wedges; regret non-negativity enforced as an invariant. The dual-based attribution of regret to individual forecast errors (Σλₜeₜ) is designed but **deliberately deferred to V2**.
 
-The physical model always operates on a quarter-hour grid.
+The automated test suite contains **23 tests**.
 
-For Belgian SDAC prices:
-
-- before **1 October 2025**, hourly day-ahead prices are repeated over the four corresponding quarter-hours;
-- from **1 October 2025**, native 15-minute SDAC prices are used.
-
-Civil-day structure is preserved, including DST days with:
-
-- 92 quarter-hours;
-- 96 quarter-hours;
-- 100 quarter-hours.
-
-ENTSO-E Transparency Platform data will be the primary price source.
-
-## Negative prices and LP cycling
-
-The project explicitly tests a known continuous-LP pathology.
-
-With sufficiently negative electricity prices, simultaneous charging and discharging can become economically attractive because battery losses increase grid consumption while preserving the terminal state of charge.
-
-For the current battery:
-
-- charge efficiency: 0.95;
-- discharge efficiency: 0.95;
-- round-trip efficiency: 0.9025;
-- cycle loss fraction: 0.0975.
-
-A constructed negative-price stress test reproduces this behaviour.
-
-The empirical Belgian price data will determine whether this pathology is material enough to require a mutually exclusive charge/discharge formulation, most likely a MILP.
-
-## Forecast inputs
-
-The project is designed to reuse previously frozen Belgian day-ahead load forecasts without retuning them for battery outcomes.
-
-This is important because the economic analysis must not contaminate the earlier forecast comparison.
-
-The stylised site preserves the temporal structure and relative forecast errors of Belgian system load under linear scaling.
-
-It is **not** intended to represent a statistically typical commercial or industrial site.
-
-## Economic evaluation
-
-The primary economic comparison will evaluate alternative forecast-driven dispatch schedules against realized load.
-
-Planned measures include:
-
-- realized energy cost;
-- forecast-induced economic regret;
-- perfect-foresight benchmark;
-- dispatch differences;
-- state-of-charge differences;
-- constraint activation;
-- attribution of economic loss to specific forecast errors.
-
-A central attribution tool will be the LP dual variables.
-
-Locally, the economic impact of forecast error can be related to a dual-weighted error:
-
-\[
-\Delta V \approx \sum_t \lambda_t e_t
-\]
-
-where:
-
-- \(e_t = L_t - \hat L_t\) is the load forecast error;
-- \(\lambda_t\) is the marginal value associated with the power-balance constraint.
-
-This gives a route from:
-
-**forecast error → economically weighted error → decision change → realized regret**
-
-## Validation philosophy
-
-The project is designed around falsification rather than around obtaining a positive result.
-
-Current validation includes:
-
-- power-balance reconstruction;
-- state-of-charge recursion checks;
-- terminal-state verification;
-- objective reconstruction;
-- charge/discharge power bounds;
-- symmetric-price forecast-irrelevance negative control;
-- asymmetric-price positive control;
-- deterministic tie-breaking;
-- explicit negative-price cycling stress test.
-
-Current status:
-
-**11 automated tests passing.**
-
-## Project structure
+## Repository
 
 ```text
 BatteryDispatchForecastValue/
 ├── README.md
 ├── pyproject.toml
-├── src/
-│   └── battery_dispatch_forecast_value/
-│       ├── __init__.py
-│       └── dispatch.py
+├── src/battery_dispatch_forecast_value/
+│   └── dispatch.py          # LP/MILP builders, lexicographic solver, evaluation
 ├── tests/
-│   └── test_dispatch.py
-├── notebooks/
-│   └── battery_dispatch.ipynb
-└── docs/
+├── notebooks/battery_dispatch.ipynb   # complete research narrative, frozen V1
+└── docs/figures/
+    └── readmepic.png
+```
+
+The notebook carries the empirical argument; reusable optimisation and evaluation logic lives in the package under test.
+
+## Companion work
+
+[ElectricityLoadForecasting](https://github.com/evrelegh/ElectricityLoadForecasting) — the upstream study that produced the frozen forecasts, with its own pre-registered freeze and untouched 2025 confirmation. [ElectricityResourceAdequacy](https://github.com/evrelegh/ElectricityResourceAdequacy) — Belgian generation adequacy on the same public data.
+
+## Data sources
+
+Public **ENTSO-E Transparency Platform** (day-ahead energy prices, Article 12.1.D) and **Elia Open Data** (dataset ods001, measured and forecast Belgian total load).
+
+
+---
+
+**V1 empirical freeze:** `4504ab3`  
+**Automated tests:** 23 passing
