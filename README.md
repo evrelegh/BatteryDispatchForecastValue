@@ -85,7 +85,7 @@ BatteryDispatchForecastValue/
 │   └── dispatch.py          # LP/MILP builders, lexicographic solver, evaluation
 ├── tests/
 ├── notebooks/battery_dispatch.ipynb   # complete research narrative, frozen V1
-└── docs/figures/
+└── figures/
     └── readmepic.png
 ```
 
