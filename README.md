@@ -75,22 +75,6 @@ Zero-capacity and constant-price controls (the latter must and does return the a
 
 The automated test suite contains **23 tests**.
 
-## Repository
-
-```text
-BatteryDispatchForecastValue/
-├── README.md
-├── pyproject.toml
-├── src/battery_dispatch_forecast_value/
-│   └── dispatch.py          # LP/MILP builders, lexicographic solver, evaluation
-├── tests/
-├── notebooks/battery_dispatch.ipynb   # complete research narrative, frozen V1
-└── figures/
-    └── readmepic.png
-```
-
-The notebook carries the empirical argument; reusable optimisation and evaluation logic lives in the package under test.
-
 ## Companion work
 
 [ElectricityLoadForecasting](https://github.com/evrelegh/ElectricityLoadForecasting) — the upstream study that produced the frozen forecasts, with its own pre-registered freeze and untouched 2025 confirmation. [ElectricityResourceAdequacy](https://github.com/evrelegh/ElectricityResourceAdequacy) — Belgian generation adequacy on the same public data.
